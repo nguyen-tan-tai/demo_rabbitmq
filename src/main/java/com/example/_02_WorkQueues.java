@@ -50,7 +50,7 @@ public class _02_WorkQueues {
                 }
                 scanner.close();
             } catch (IOException | TimeoutException e) {
-                throw new RuntimeException();
+                throw new RuntimeException(e);
             } finally {
                 System.out.println("System terminated!");
                 System.exit(0); // Terminate all threads
@@ -98,7 +98,7 @@ public class _02_WorkQueues {
                 channel.basicConsume(TASK_QUEUE_NAME, autoAck, deliverCallback, consumerTag -> {
                 });
             } catch (IOException | TimeoutException e) {
-                throw new RuntimeException();
+                throw new RuntimeException(e);
             }
         }
     }

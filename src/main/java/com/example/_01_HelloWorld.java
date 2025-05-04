@@ -44,7 +44,7 @@ public class _01_HelloWorld {
                 scanner.close();
                 System.exit(0);
             } catch (IOException | TimeoutException e) {
-                throw new RuntimeException();
+                throw new RuntimeException(e);
             }
         }
     }
@@ -73,7 +73,7 @@ public class _01_HelloWorld {
                 channel.basicConsume(QUEUE_NAME, true, deliverCallback, consumerTag -> {
                 });
             } catch (IOException | TimeoutException e) {
-                throw new RuntimeException();
+                throw new RuntimeException(e);
             }
         }
     }
