@@ -10,7 +10,7 @@ import java.util.Scanner;
 import java.util.concurrent.TimeoutException;
 
 
-public class WorkQueues {
+public class _02_WorkQueues {
 
     private final static String TASK_QUEUE_NAME = "task_queue";
 

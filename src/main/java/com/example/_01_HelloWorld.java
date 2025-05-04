@@ -9,7 +9,7 @@ import java.util.Scanner;
 import java.util.concurrent.TimeoutException;
 
 
-public class HelloWorld {
+public class _01_HelloWorld {
 
     private final static String QUEUE_NAME = "hello";
 
@@ -30,7 +30,7 @@ public class HelloWorld {
             try (
                     Connection connection = factory.newConnection();
                     Channel channel = connection.createChannel()) {
-                channel.queueDeclare(HelloWorld.QUEUE_NAME, false, false, false, null);
+                channel.queueDeclare(_01_HelloWorld.QUEUE_NAME, false, false, false, null);
                 System.out.println(" [Sender ready] Enter message. To exit, type EXIT");
                 Scanner scanner = new Scanner(System.in);
                 while (true) {
@@ -38,7 +38,7 @@ public class HelloWorld {
                     if ("EXIT".equals(cmd)) {
                         break;
                     }
-                    channel.basicPublish("", HelloWorld.QUEUE_NAME, null, cmd.getBytes());
+                    channel.basicPublish("", _01_HelloWorld.QUEUE_NAME, null, cmd.getBytes());
                     System.out.println(" [Sender] Sent '" + cmd + "'");
                 }
                 scanner.close();
