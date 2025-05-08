@@ -1,4 +1,4 @@
-package com.example;
+package com.example.queue;
 
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.ConfirmCallback;
@@ -40,7 +40,7 @@ public class _07_PublisherConfirms {
             for (int i = 0; i < MESSAGE_COUNT; i++) {
                 String body = String.valueOf(i);
                 ch.basicPublish("", queue, null, body.getBytes());
-                ch.waitForConfirmsOrDie(5_000);
+                ch.waitForConfirmsOrDie(5000);
             }
             long end = System.nanoTime();
             System.out.format("Published %,d messages individually in %,d ms%n", MESSAGE_COUNT, Duration.ofNanos(end - start).toMillis());

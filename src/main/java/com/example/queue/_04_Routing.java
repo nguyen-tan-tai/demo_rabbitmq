@@ -1,4 +1,4 @@
-package com.example;
+package com.example.queue;
 
 import com.rabbitmq.client.BuiltinExchangeType;
 import com.rabbitmq.client.Channel;
@@ -9,25 +9,22 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Scanner;
 import java.util.concurrent.TimeoutException;
-import java.util.random.RandomGenerator;
 
 
-public class _05_Topic {
+public class _04_Routing {
 
-    private static final String EXCHANGE_NAME = "topic_logs";
+    private static final String EXCHANGE_NAME = "direct_logs";
 
     public static void main(String[] args) throws IOException, TimeoutException {
-        ReceiveLogs kernLogs = new ReceiveLogs("KERN", new String[] {"kern.*"});
-        kernLogs.run();
-        ReceiveLogs criticalLogs = new ReceiveLogs("CRITICAL", new String[] {"*.critical"});
-        criticalLogs.run();
-        ReceiveLogs allLogs = new ReceiveLogs("ALL", new String[] {"#"});
-        allLogs.run();
+        ReceiveLogs receiveLogs1 = new ReceiveLogs("ERROR", new SEVERITY[] {SEVERITY.ERROR});
+        receiveLogs1.run();
+        ReceiveLogs receiveLogs2 = new ReceiveLogs("WARN&INFO", new SEVERITY[] {SEVERITY.INFO, SEVERITY.WARN});
+        receiveLogs2.run();
         EmitLog emitLog = new EmitLog();
         emitLog.run();
     }
 
-    public static class EmitLog implements Runnable {
+    static class EmitLog implements Runnable {
 
         @Override
         public void run() {
@@ -35,7 +32,7 @@ public class _05_Topic {
             factory.setHost("localhost");
             try (Connection connection = factory.newConnection();
                     Channel channel = connection.createChannel()) {
-                channel.exchangeDeclare(EXCHANGE_NAME, BuiltinExchangeType.TOPIC);
+                channel.exchangeDeclare(EXCHANGE_NAME, BuiltinExchangeType.DIRECT);
                 System.out.println(" [EmitLog ready] Enter message. To exit, type EXIT");
                 Scanner scanner = new Scanner(System.in);
                 while (true) {
@@ -45,18 +42,21 @@ public class _05_Topic {
                     }
                     if ("BOOM".equals(cmd)) {
                         for (int i = 1; i < 50; i++) {
-                            String routingKey = Arrays.asList("kern." + i, i + ".critical", "#").get(i % 3);
-                            String message = "Message " + routingKey;
-                            channel.basicPublish(EXCHANGE_NAME, routingKey, null, message.getBytes("UTF-8"));
-                            System.out.println(" [EmitLog] Sent '" + routingKey + "' '" + message + "'");
+                            SEVERITY s = SEVERITY.values()[i % 3];
+                            String msg = "Message " + i;
+                            channel.basicPublish(EXCHANGE_NAME, s.getValue(), null, msg.getBytes("UTF-8"));
+                            System.out.println(" [EmitLog] Sent '" + s.getValue() + "' '" + msg + "'");
                         }
                         continue;
                     }
-                    String msg[] = cmd.split("|");
-                    String routingKey = msg[0];
-                    String message = msg[1];
-                    channel.basicPublish(EXCHANGE_NAME, routingKey, null, message.getBytes("UTF-8"));
-                    System.out.println(" [EmitLog] Sent '" + routingKey + "' '" + message + "'");
+                    String msg[] = cmd.split(":");
+                    SEVERITY s = SEVERITY.fromValue(msg[0]);
+                    if (s == null) {
+                        System.out.println("Allow: " + Arrays.toString(SEVERITY.values()));
+                        continue;
+                    }
+                    channel.basicPublish(EXCHANGE_NAME, s.getValue(), null, msg[1].getBytes("UTF-8"));
+                    System.out.println(" [EmitLog] Sent '" + s.getValue() + "' '" + msg[1] + "'");
                 }
                 scanner.close();
             } catch (Exception e) {
@@ -69,14 +69,38 @@ public class _05_Topic {
         }
     }
 
+    static enum SEVERITY {
+
+        ERROR("error"), WARN("warn"), INFO("info");
+
+        private String value;
+
+        private SEVERITY(String value) {
+            this.value = value;
+        }
+
+        public String getValue() {
+            return value;
+        }
+
+        public static SEVERITY fromValue(String value) {
+            for (SEVERITY s : SEVERITY.values()) {
+                if (s.getValue().equalsIgnoreCase(value)) {
+                    return s;
+                }
+            }
+            return null;
+        }
+    }
+
     static class ReceiveLogs implements Runnable {
 
         private String name;
-        private String[] topics;
+        private SEVERITY[] severity;
 
-        public ReceiveLogs(String name, String[] severity) {
+        public ReceiveLogs(String name, SEVERITY[] severity) {
             this.name = name;
-            this.topics = severity;
+            this.severity = severity;
         }
 
         @Override
@@ -86,20 +110,15 @@ public class _05_Topic {
                 factory.setHost("localhost");
                 final Connection connection = factory.newConnection();
                 final Channel channel = connection.createChannel();
-                channel.exchangeDeclare(EXCHANGE_NAME, BuiltinExchangeType.TOPIC);
+                channel.exchangeDeclare(EXCHANGE_NAME, BuiltinExchangeType.DIRECT);
                 String queueName = channel.queueDeclare().getQueue();
-                for (String topic : this.topics) {
-                    channel.queueBind(queueName, EXCHANGE_NAME, topic);
+                for (SEVERITY severity : this.severity) {
+                    channel.queueBind(queueName, EXCHANGE_NAME, severity.getValue());
                 }
                 System.out.println(" [ReceiveLogs " + name + "] Waiting for messages.");
                 DeliverCallback deliverCallback = (consumerTag, delivery) -> {
                     String message = new String(delivery.getBody(), "UTF-8");
                     System.out.println(" [ReceiveLogs " + name + "] Received '" + delivery.getEnvelope().getRoutingKey() + "':'" + message + "'");
-                    try {
-                        Thread.sleep(RandomGenerator.getDefault().nextInt(1000));
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
                 };
                 channel.basicConsume(queueName, true, deliverCallback, consumerTag -> {
                 });
